@@ -13,10 +13,13 @@ class Plugin:
 class PluginLoader:
     def __init__(self, plugins_folder_path : str) -> None:
         self.plugins_folder_path = plugins_folder_path
+        self.plugins : list[str] = []
         
         
-    def load_new_plugin(self, plugin_name : str) -> list[str]:
-        return [module.name for module in pkgutil.iter_modules([self.plugins_folder_path + plugin_name], prefix=plugin_name + '.')]
+    def load_new_plugin(self, plugin_name : str) -> None:
+        self.plugins.extend(
+            [module.name for module in pkgutil.iter_modules([self.plugins_folder_path + plugin_name], prefix=f"plugins.{plugin_name}.")]
+        )
 
 
 class MyBot(commands.Bot):
@@ -26,9 +29,14 @@ class MyBot(commands.Bot):
         intents=discord.Intents.all()
         )
         
-        
+        self.plugin_loader = PluginLoader('scripts/plugins/')
+        self.plugin_loader.load_new_plugin('messages_capture_system')
 
     async def setup_hook(self) -> None:
+        print(self.plugin_loader.plugins)
+        for plugin in self.plugin_loader.plugins:
+            await self.load_extension(plugin)
+        
         await self.tree.sync()
 
     async def on_ready(self):
@@ -40,7 +48,7 @@ bot = MyBot()
 
 if __name__ == '__main__':
     dotenv.load_dotenv()
-    token = os.getenv('token')
+    token = os.getenv('TOKEN')
 
     if token is None:
         raise ValueError('Token not found')
